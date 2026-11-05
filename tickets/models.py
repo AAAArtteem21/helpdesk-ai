@@ -1,6 +1,10 @@
 from django.db import models
 import uuid
 from django.utils import timezone
+from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector, SearchVectorField
+from django.urls import reverse
 
 
 class Ticket(models.Model):
@@ -40,3 +44,30 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.ticket.id} [{self.status}]"
+
+
+class Article(models.Model):
+    slug = models.SlugField(unique=True)
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    search_vector = SearchVectorField(null=True, editable=False)
+
+    class Meta:
+        indexes = [GinIndex(fields=["search_vector"])]
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        Article.objects.filter(pk=self.pk).update(
+            search_vector=SearchVector("title", weight="A", config="simple")
+            +SearchVector("body", weight="B", config="simple")
+        )
+
+    def get_absolute_url(self):
+        return reverse("kb-article", args=[self.slug])
+
+    @property
+    def public_url(self):
+        return settings.PUBLIC_BASE_URL.rstrip("/") + self.get_absolute_url()
+
+    def __str__(self):
+        return self.title
