@@ -26,7 +26,7 @@ def buuild_tsquery(text: str) -> str:
 
     return " | ".join(f"{s}:*" for s in stems)
 
-def search_articales(text: str, limit: int = 3) -> list[Article]:
+def search_articles(text: str, limit: int = 3) -> list[Article]:
     raw = buuild_tsquery(text)
     if not raw:
         return []
