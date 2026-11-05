@@ -93,3 +93,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000")
+
+WORKER_MAX_ATTEMPTS = int(os.environ.get("WORKER_MAX_ATTEMPTS", "6"))
+WORKER_LEASE_SECONDS = int(os.environ.get("WORKER_LEASE_SECONDS", "300"))
+WORKER_POLL_SECONDS = float(os.environ.get("WORKER_POLL_SECONDS", "1"))
