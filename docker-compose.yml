@@ -2,22 +2,30 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: helpdesk
-      POSTGRES_USER: helpdesk
-      POSTGRES_PASSWORD: helpdesk
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helpdesk -d helpdesk"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
       timeout: 3s
       retries: 20
 
   web:
     build: .
-    command: sh -c "python manage.py migrate && gunicorn config.wsgi -b 0.0.0.0:8000 -w 4"
+    command: sh -c "python manage.py migrate && python manage.py seed_kb && gunicorn config.wsgi -b 0.0.0.0:8000 -w 4"
     ports:
       - "8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-key}
+      DEBUG: ${DEBUG:-0}
+      POSTGRES_DB: ${POSTGRES_DB:-helpdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-helpdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpdesk}
+      POSTGRES_HOST: db
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
     depends_on:
       db:
         condition: service_healthy
