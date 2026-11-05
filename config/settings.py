@@ -9,6 +9,13 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-key")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_RPM = int(os.environ.get("LLM_RPM", "60"))
+LLM_CONCURRENCY = int(os.environ.get("LLM_CONCURRENCY", "30"))
+LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "60"))
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
