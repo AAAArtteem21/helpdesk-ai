@@ -8,4 +8,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("health", views.health),
     path("webhooks/helpdesk", views.helpdesk_webhook),
+    path("kb/<slug:slug>", views.kb_article, name="kb-article"),
 ]
