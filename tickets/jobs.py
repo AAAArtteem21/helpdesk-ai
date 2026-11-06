@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, IntegerField, Q, Value, When, F
 from django.utils import timezone
 
 from .models import Ticket
@@ -68,12 +68,13 @@ def finish_failed(ticket: Ticket, error: str) -> bool:
     ) == 1
 
 
-def finish_retry(ticket: Ticket, error: str, retry_after: float | None = None) -> bool:
-    if ticket.attempts >= settings.WORKER_MAX_ATTEMPTS:
+def finish_retry(ticket, error, retry_after=None, count_attempt=True) -> bool:
+    if count_attempt and ticket.attempts >= settings.WORKER_MAX_ATTEMPTS:
         return finish_failed(ticket, f"gave up after {ticket.attempts} attempts: {error}")
     delay = backoff(ticket.attempts, retry_after)
     now = timezone.now()
+    extra = {} if count_attempt else {"attempts": F("attempts") - 1}
     return _mine(ticket).update(
         status=S.RECEIVED, next_attempt_at=now + timedelta(seconds=delay),
-        locked_until=None, last_error=error[:1000], updated_at=now,
+        locked_until=None, last_error=error[:1000], updated_at=now, **extra,
     ) == 1

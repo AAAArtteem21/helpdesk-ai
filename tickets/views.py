@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import escape, linebreaks
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.conf import settings
+from django.http import Http404
 
 from . import actions
 from .models import Article, Ticket
@@ -93,10 +95,12 @@ def ticket_reject(request, pk):
     return redirect("ticket-detail", pk=pk)
 
 def api_stats(request):
+    if not settings.ENABLE_SIM_API:
+        raise Http404
     prefix = request.GET.get("prefix", "")
     qs = Ticket.objects.filter(ticket_id__startswith=prefix)
     counts = dict(qs.order_by().values_list("status").annotate(n=Count("id")))
     ready = list(qs.filter(status=S.DRAFT_READY).order_by("created_at")
-                 .values("id", "draft")[:100])
+                 .values("id", "ticket_id", "draft")[:100])
     return JsonResponse({"counts": counts, "total": sum(counts.values()),
-                         "draft_ready":  ready})
+                         "draft_ready": ready})

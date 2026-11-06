@@ -156,12 +156,13 @@ class LLMClient:
     async def _keyless(self, messages, articles) -> str:
         delay = random.uniform(*self.keyless_delay)
 
-        async def fire():
-            with contextlib.suppress(LLMError, asyncio.TimeoutError):
-                await asyncio.wait_for(self._call_provider(messages),
-                                    timeout=max(delay, 1.0))
+        async def probe():
+            try:
+                await asyncio.wait_for(self._call_provider(messages), timeout=delay)
+            except (LLMError, asyncio.TimeoutError):
+                pass
 
-        await asyncio.gather(fire(), asyncio.sleep(delay))
+        await asyncio.gather(probe(), asyncio.sleep(delay))
         return static_draft(articles)
 
 

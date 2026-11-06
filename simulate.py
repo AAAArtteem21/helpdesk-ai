@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""End-to-end simulation: duplicates, parallel duplicates, load, delivery check.
+"""End-to-end simulation: duplicates, parallel duplicates, double approve, load, delivery check.
 
-    python simulate.py                       # 500 tickets over 10 minutes
+    python simulate.py                            # 500 tickets over 10 minutes
     python simulate.py --count 60 --duration 60   # quick run
+    python simulate.py --count 200 --duration 30  # burst
 """
 import argparse
 import http.cookiejar
@@ -60,6 +61,13 @@ def stats(args, run):
     return get_json(f"{args.base}/api/stats?prefix={q}")
 
 
+def approve_request(args, item, token):
+    data = urllib.parse.urlencode({"draft": item["draft"]}).encode()
+    return urllib.request.Request(
+        f"{args.base}/tickets/{item['id']}/approve", data=data,
+        headers={"X-CSRFToken": token or "", "Referer": args.base + "/"})
+
+
 def approver(args, run, stop, counter):
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
@@ -73,15 +81,43 @@ def approver(args, run, stop, counter):
             for item in ready:
                 if csrf() is None:
                     opener.open(f"{args.base}/tickets/{item['id']}", timeout=10).read()
-                data = urllib.parse.urlencode({"draft": item["draft"]}).encode()
-                req = urllib.request.Request(
-                    f"{args.base}/tickets/{item['id']}/approve", data=data,
-                    headers={"X-CSRFToken": csrf() or "", "Referer": args.base + "/"})
-                opener.open(req, timeout=10).read()
+                opener.open(approve_request(args, item, csrf()), timeout=10).read()
                 counter[0] += 1
         except Exception as e:
             print("  approver:", repr(e))
         stop.wait(1)
+
+
+def double_approve(args, run):
+    print("D. 10 parallel approves of one ticket")
+    tid = f"{run}-D"
+    post_webhook(args.base, payload(args, run, f"{run}-evD", tid))
+    item, deadline = None, time.monotonic() + 120
+    while item is None and time.monotonic() < deadline:
+        time.sleep(2)
+        item = next((i for i in stats(args, run)["draft_ready"]
+                     if i.get("ticket_id") == tid), None)
+    check("D: ticket got a draft", item is not None,
+          "" if item else "(does /api/stats return ticket_id for draft_ready items?)")
+    if item is None:
+        return
+
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    opener.open(f"{args.base}/tickets/{item['id']}", timeout=10).read()
+    token = next((c.value for c in jar if c.name == "csrftoken"), None)
+    barrier = threading.Barrier(10)
+
+    def click(_):
+        barrier.wait()
+        try:
+            return opener.open(approve_request(args, item, token), timeout=10).status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    with ThreadPoolExecutor(10) as ex:
+        codes = list(ex.map(click, range(10)))
+    check("D: double click never gives 5xx", all(c < 500 for c in codes), str(codes))
 
 
 def main():
@@ -120,6 +156,8 @@ def main():
     check("all 200", all(s == 200 for s, _ in outs))
     check("exactly 1 accepted", bodies.count("accepted") == 1, f"accepted={bodies.count('accepted')}")
 
+    double_approve(args, run)
+
     print(f"C. load: {args.count} tickets over {args.duration:.0f}s")
     stop = threading.Event()
     approved = [0]
@@ -147,13 +185,13 @@ def main():
             if i and i % 50 == 0:
                 print(f"  sent {i}/{args.count}")
     latencies.sort()
-    p95 = latencies[int(len(latencies) * 0.95) - 1]
+    p95 = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))]
     check("all webhooks accepted", bad == 0, f"bad={bad}")
     check("webhook p95 < 2s", p95 < 2, f"p50={statistics.median(latencies)*1000:.0f}ms "
           f"p95={p95*1000:.0f}ms max={latencies[-1]*1000:.0f}ms")
 
     print("E. waiting for processing to finish")
-    expected = args.count + 2
+    expected = args.count + 3
     deadline = time.monotonic() + args.timeout
     while time.monotonic() < deadline:
         s = stats(args, run)
@@ -168,6 +206,7 @@ def main():
     check("no tickets lost", s["total"] == expected, f"{s['total']}/{expected}")
     check("everything reached a final state",
           sum(c.get(k, 0) for k in TERMINAL) == expected, str(c))
+    check("no ticket ended in 'failed'", c.get("failed", 0) == 0, f"failed={c.get('failed', 0)}")
 
     dl = get_json(f"{args.mock}/deliveries")
     mine = [d for d in dl["deliveries"] if d["ticket_id"].startswith(run)]
