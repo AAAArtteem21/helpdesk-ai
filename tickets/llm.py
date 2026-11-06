@@ -158,7 +158,8 @@ class LLMClient:
 
         async def probe():
             try:
-                await asyncio.wait_for(self._call_provider(messages), timeout=delay)
+                await asyncio.wait_for(self._call_provider(messages),
+                                       timeout=max(delay, 1.0))
             except (LLMError, asyncio.TimeoutError):
                 pass
 

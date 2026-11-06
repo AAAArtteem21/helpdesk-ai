@@ -125,7 +125,8 @@ class ViewTests(TransactionTestCase):
     def test_api_stats_filters_by_prefix(self):
         mk(1, status=S.DRAFT_READY)
         mk(2, status=S.SENT)
-        data = self.c.get("/api/stats", {"prefix": "T-1"}).json()
+        with self.settings(ENABLE_SIM_API=True):
+            data = self.c.get("/api/stats", {"prefix": "T-1"}).json()
         self.assertEqual(data["total"], 1)
         self.assertEqual(data["counts"], {"draft_ready": 1})
         self.assertEqual(len(data["draft_ready"]), 1)

@@ -100,3 +100,4 @@ WORKER_POLL_SECONDS = float(os.environ.get("WORKER_POLL_SECONDS", "1"))
 SEND_TIMEOUT = float(os.environ.get("SEND_TIMEOUT", "10"))
 SEND_MAX_ATTEMPTS = int(os.environ.get("SEND_MAX_ATTEMPTS", "8"))
 SEND_CONCURRENCY = int(os.environ.get("SEND_CONCURRENCY", "20"))
+ENABLE_SIM_API = os.environ.get("ENABLE_SIM_API", "0") == "1"
