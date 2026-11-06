@@ -34,7 +34,7 @@
 | POSTGRES_DB / USER / PASSWORD | helpdesk | доступ до БД |
 | PUBLIC_BASE_URL | http://localhost:8000 | база для посилань на статті в чернетках |
 | LLM_API_KEY | порожньо | порожній = режим без ключа |
-| LLM_BASE_URL / LLM_MODEL | Groq / llama-3.3-70b-versatile | OpenAI-сумісний провайдер |
+| LLM_BASE_URL / LLM_MODEL | Groq / openai/gpt-oss-120b | OpenAI-сумісний провайдер |
 | LLM_RPM | 60 | глобальний ліміт запитів на хвилину |
 | LLM_CONCURRENCY | 30 | максимум одночасних викликів LLM |
 | LLM_TIMEOUT | 60 | таймаут запиту до LLM, с |
@@ -135,6 +135,49 @@
 - **E**: жодне звернення не втрачено, нічого не в `failed`, жодна відповідь не
   доставлена двічі (звірка з `GET /deliveries` мока).
 
+ helpdesk-ai  python simulate.py
+run id: sim36ac50
+A. sequential duplicates
+  [PASS] all 200 
+  [PASS] 1 accepted, 4 duplicate ['accepted', 'duplicate', 'duplicate', 'duplicate', 'duplicate']
+B. 30 parallel identical event_id
+  [PASS] all 200 
+  [PASS] exactly 1 accepted accepted=1
+D. 10 parallel approves of one ticket
+  [PASS] D: ticket got a draft 
+  [PASS] D: double click never gives 5xx [200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
+C. load: 500 tickets over 600s
+  sent 50/500
+  sent 100/500
+  sent 150/500
+  sent 200/500
+  sent 250/500
+  sent 300/500
+  sent 350/500
+  sent 400/500
+  sent 450/500
+  [PASS] all webhooks accepted bad=0
+  [PASS] webhook p95 < 2s p50=30ms p95=52ms max=339ms
+E. waiting for processing to finish
+  {'approved': 4, 'received': 1, 'sent': 485, 'sending': 1, 'drafting': 12}
+  {'approved': 1, 'sent': 490, 'sending': 1, 'drafting': 11}
+  {'approved': 1, 'sent': 493, 'drafting': 7, 'draft_ready': 2}
+  {'approved': 1, 'sent': 496, 'sending': 1, 'drafting': 5}
+  {'approved': 3, 'sent': 498, 'sending': 1, 'drafting': 1}
+  {'sent': 500, 'sending': 3}
+  {'sent': 500, 'sending': 3}
+  {'approved': 3, 'sent': 500}
+  {'sent': 503}
+  [PASS] no tickets lost 503/503
+  [PASS] everything reached a final state {'sent': 503}
+  [PASS] no ticket ended in 'failed' failed=0
+  [PASS] no ticket delivered twice to the customer 
+  [PASS] every 'sent' ticket really was delivered sent=503 delivered=503
+
+  mock stats: requests=721 5xx=144 slow=74 duplicates_suppressed=74
+  approved by simulated operator: 502, failed: 0
+
+13/13 checks passed
 
 Контрольний прогін з `MOCK_DEDUP=0` (хелпдеск не дедуплікує): перевірка «не доставлено
 двічі» падає, тобто захист тримається саме на `Idempotency-Key`.

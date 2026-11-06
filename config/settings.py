@@ -11,7 +11,7 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-oss-120b")
 LLM_RPM = int(os.environ.get("LLM_RPM", "60"))
 LLM_CONCURRENCY = int(os.environ.get("LLM_CONCURRENCY", "30"))
 LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "60"))
