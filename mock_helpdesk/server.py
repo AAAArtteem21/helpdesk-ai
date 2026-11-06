@@ -106,6 +106,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "9000"))
+    port = int(os.environ.get("MOCK_PORT", "9000"))
     print(f"mock-helpdesk on :{port} fail={FAIL_RATE} slow={SLOW_RATE} dedup={DEDUP}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
