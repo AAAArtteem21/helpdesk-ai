@@ -1,0 +1,30 @@
+{% extends "tickets/base.html" %}
+{% block head %}<meta http-equiv="refresh" content="10">{% endblock %}
+{% block content %}
+<h1>Звернення</h1>
+<p class="tabs">
+  {% for value, label, n in tabs %}
+    <a href="?status={{ value }}" class="{% if value == status %}on{% endif %}">{{ label }} ({{ n }})</a>
+  {% endfor %}
+</p>
+<table>
+  <tr><th>Тікет</th><th>Клієнт</th><th>Повідомлення</th><th>Статус</th><th>Створено</th></tr>
+  {% for t in page %}
+  <tr>
+    <td><a href="{% url 'ticket-detail' t.pk %}">{{ t.ticket_id }}</a></td>
+    <td>{{ t.customer_email }}</td>
+    <td>{{ t.message|truncatechars:70 }}</td>
+    <td><span class="badge {{ t.status }}">{{ t.status }}</span></td>
+    <td>{{ t.created_at|date:"d.m H:i:s" }}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5">Звернень немає.</td></tr>
+  {% endfor %}
+</table>
+<p>
+  {% if page.has_previous %}<a href="?status={{ status }}&page={{ page.previous_page_number }}">← Назад</a>{% endif %}
+  Сторінка {{ page.number }} з {{ page.paginator.num_pages }}
+  {% if page.has_next %}<a href="?status={{ status }}&page={{ page.next_page_number }}">Далі →</a>{% endif %}
+</p>
+<small>Сторінка оновлюється кожні 10 с.</small>
+{% endblock %}

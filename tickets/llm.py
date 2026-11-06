@@ -94,8 +94,8 @@ _KB_REF = re.compile(r"\[KB-(\d+)\]")
 def extract_sources(text: str, articles) -> list[int]:
     allowed = {a.pk for a in articles}
     seen: list[int] = []
-    for m in _KB_REF.findall(text):
-        pk = int(m.group(1))
+    for raw in _KB_REF.findall(text):
+        pk = int(raw)
         if pk in allowed and pk not in seen:
             seen.append(pk)
     return seen
@@ -110,7 +110,7 @@ class LLMClient:
         self.model = model or settings.LLM_MODEL
         self.keyless_delay = keyless_delay
         self.limiter = limiter or SlidingWindowLimiter(rpm or settings.LLM_RPM)
-        self._sem = asyncio.Semaphore(concurrency or settings.LLM_CONCURENCY)
+        self._sem = asyncio.Semaphore(concurrency or settings.LLM_CONCURRENCY)
         self._http = httpx.AsyncClient(timeout=timeout or settings.LLM_TIMEOUT,
                                        transport=transport)
 

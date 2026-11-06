@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block head %}{% endblock %}
+  <title>{% block title %}Звернення{% endblock %} · Helpdesk AI</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 16px; color: #222; }
+    a { color: #1a5fb4; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
+    .tabs a { margin-right: 12px; text-decoration: none; }
+    .tabs a.on { font-weight: 700; border-bottom: 2px solid #1a5fb4; }
+    .badge { padding: 1px 8px; border-radius: 10px; background: #eee; font-size: 13px; }
+    .badge.draft_ready { background: #ffe9a8; } .badge.sent { background: #c8f0c8; }
+    .badge.failed, .badge.rejected { background: #f6c6c6; }
+    .msg { padding: 8px 12px; margin: 8px 0; border-radius: 6px; background: #eef; }
+    .msg.success { background: #dff5df; } .msg.warning { background: #fff1c9; } .msg.error { background: #fbd5d5; }
+    textarea { width: 100%; min-height: 220px; font: inherit; padding: 8px; box-sizing: border-box; }
+    .customer { background: #f6f6f6; padding: 10px 14px; border-radius: 6px; white-space: pre-wrap; }
+    .draft { background: #f1f7ff; padding: 10px 14px; border-radius: 6px; white-space: pre-wrap; }
+    button { font: inherit; padding: 6px 16px; cursor: pointer; }
+    .row { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
+    .err { color: #a00; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <p><a href="{% url 'ticket-list' %}">← Усі звернення</a></p>
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</body>
+</html>

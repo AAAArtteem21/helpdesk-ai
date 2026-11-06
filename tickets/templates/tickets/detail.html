@@ -1,0 +1,36 @@
+{% extends "tickets/base.html" %}
+{% block head %}{% if pending %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block title %}{{ t.ticket_id }}{% endblock %}
+{% block content %}
+<h1>{{ t.ticket_id }} <span class="badge {{ t.status }}">{{ t.status }}</span></h1>
+<p>Клієнт: {{ t.customer_email }} · створено {{ t.created_at|date:"d.m.Y H:i:s" }} · спроб: {{ t.attempts }}</p>
+
+<h3>Звернення клієнта</h3>
+<div class="customer">{{ t.message }}</div>
+
+{% if t.last_error %}<p class="err">Остання помилка: {{ t.last_error }}</p>{% endif %}
+
+<h3>Чернетка відповіді</h3>
+{% if editable %}
+  <form method="post" action="{% url 'ticket-approve' t.pk %}" id="approve">
+    {% csrf_token %}
+    <textarea name="draft" maxlength="{{ max_len }}" required>{{ t.draft }}</textarea>
+  </form>
+  <form method="post" action="{% url 'ticket-reject' t.pk %}" id="reject">{% csrf_token %}</form>
+  <div class="row">
+    <button type="submit" form="approve">Підтвердити й надіслати</button>
+    <button type="submit" form="reject" onclick="return confirm('Відхилити чернетку?')">Відхилити</button>
+  </div>
+{% elif t.draft %}
+  <div class="draft">{{ t.draft }}</div>
+{% else %}
+  <p><em>Чернетка ще генерується…</em></p>
+{% endif %}
+
+{% if sources %}
+  <h3>Джерела з бази знань</h3>
+  <ul>
+    {% for a in sources %}<li>[KB-{{ a.pk }}] <a href="{{ a.get_absolute_url }}" target="_blank">{{ a.title }}</a></li>{% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
