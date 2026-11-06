@@ -90,3 +90,12 @@ def ticket_reject(request, pk):
     else:
         messages.warning(request, "Звернення вже оброблено: статус змінився.")
     return redirect("ticket-detail", pk=pk)
+
+def api_stats(request):
+    prefix = request.GET.get("prefix", "")
+    qs = Ticket.objects.filter(ticked_id__startswith=prefix)
+    counts = dict(qs.order_by().values_list("status").annotate(n=Count("id")))
+    ready = list(qs.filter(status=S.DRAFT_READY).order_by("created_at")
+                 .values("id", "draft")[:100])
+    return JsonResponse({"counts": counts, "total": sum(counts.values()),
+                         "draft_ready":  ready})

@@ -121,3 +121,11 @@ class ViewTests(TransactionTestCase):
         self.c.post(reverse("ticket-reject", args=[t.pk]))
         t.refresh_from_db()
         self.assertEqual(t.status, S.REJECTED)
+
+    def test_api_stats_filters_by_prefix(self):
+        mk(1, status=S.DRAFT_READY)
+        mk(2, status=S.SENT)
+        data = self.c.get("/api/stats", {"prefix": "T-1"}).json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["counts"], {"draft_ready": 1})
+        self.assertEqual(len(data["draft_ready"]), 1)
