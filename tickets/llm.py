@@ -1,6 +1,7 @@
 import asyncio
 import random
 import re
+import contextlib
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -153,11 +154,14 @@ class LLMClient:
             raise LLMTemporaryError("malformed provider response") from e
 
     async def _keyless(self, messages, articles) -> str:
-        try:
-            await self._call_provider(messages)
-        except LLMError:
-            pass
-        await asyncio.sleep(random.uniform(*self.keyless_delay))
+        delay = random.uniform(*self.keyless_delay)
+
+        async def fire():
+            with contextlib.suppress(LLMError, asyncio.TimeoutError):
+                await asyncio.wait_for(self._call_provider(messages),
+                                    timeout=max(delay, 1.0))
+
+        await asyncio.gather(fire(), asyncio.sleep(delay))
         return static_draft(articles)
 
 

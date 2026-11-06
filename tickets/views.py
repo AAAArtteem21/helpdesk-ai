@@ -58,7 +58,8 @@ def ticket_list(request):
 
     counts = dict(Ticket.objects.order_by().values_list("status").annotate(n=Count("id")))
     tabs = [("", "Усі", sum(counts.values()))] + [(v, v, counts.get(v, 0)) for v in S.values]
-    page = render(request, "tickets/list.html",
+    page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    return render(request, "tickets/list.html",
                   {"page": page, "tabs": tabs, "status": status})
 
 def ticket_detail(request, pk):
@@ -93,7 +94,7 @@ def ticket_reject(request, pk):
 
 def api_stats(request):
     prefix = request.GET.get("prefix", "")
-    qs = Ticket.objects.filter(ticked_id__startswith=prefix)
+    qs = Ticket.objects.filter(ticket_id__startswith=prefix)
     counts = dict(qs.order_by().values_list("status").annotate(n=Count("id")))
     ready = list(qs.filter(status=S.DRAFT_READY).order_by("created_at")
                  .values("id", "draft")[:100])

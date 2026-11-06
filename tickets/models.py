@@ -19,7 +19,7 @@ class Ticket(models.Model):
         FAILED = "failed"
 
     event_id = models.CharField(max_length=128, unique=True)
-    ticket = models.CharField(max_length=64, db_index=True)
+    ticket_id = models.CharField(max_length=64, db_index=True)
     customer_email = models.EmailField()
     message = models.TextField()
     reply_url = models.URLField(max_length=500)
@@ -31,9 +31,9 @@ class Ticket(models.Model):
     reply_key = models.UUIDField(default=uuid.uuid4, editable=False)
 
     attempts = models.PositiveSmallIntegerField(default=0)
-    next_attempt_at = models.DateTimeField(default=timezone.now())
+    next_attempt_at = models.DateTimeField(default=timezone.now)
     locked_until = models.DateTimeField(null=True, blank=True)
-    last_error = models.DateTimeField(blank=True)
+    last_error = models.TextField(blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -43,7 +43,7 @@ class Ticket(models.Model):
         indexes = [models.Index(fields=["status", "next_attempt_at"])]
 
     def __str__(self):
-        return f"{self.ticket.id} [{self.status}]"
+        return f"{self.ticket_id} [{self.status}]"
 
 
 class Article(models.Model):

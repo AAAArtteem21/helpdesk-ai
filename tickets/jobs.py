@@ -10,24 +10,24 @@ from .models import Ticket
 
 S = Ticket.Status
 
+
 def backoff(attempts: int, retry_after: float | None = None) -> float:
-    """time for next atempt"""
+    """sec for next try"""
     if retry_after is not None:
-        return retry_after + random.uniform(0,2)
-    return min(300, 2 * 2 ** (attempts-1)) * random.uniform(0.5, 1.5)
+        return retry_after + random.uniform(0, 2)
+    return min(300, 2 * 2 ** (attempts - 1)) * random.uniform(0.5, 1.5)
+
 
 def fail_exhausted(now=None) -> int:
-    """ticket who died more times -> failed"""
     now = now or timezone.now()
     return Ticket.objects.filter(
         status=S.DRAFTING, locked_until__lt=now,
         attempts__gte=settings.WORKER_MAX_ATTEMPTS,
-    ).update(status=S.FAILED, locked_untill=None, updated_at=now,
-            last_error="worker lost the ticket too many times (lease expired)")
+    ).update(status=S.FAILED, locked_until=None, updated_at=now,
+             last_error="worker lost the ticket too many times (lease expired)")
 
 
 def claim(limit: int) -> list[Ticket]:
-    """take to limit and give lease/"""
     now = timezone.now()
     fail_exhausted(now)
     with transaction.atomic():
@@ -39,6 +39,7 @@ def claim(limit: int) -> list[Ticket]:
             )
             .annotate(is_retry=Case(When(attempts__gt=0, then=Value(1)),
                                     default=Value(0), output_field=IntegerField()))
+            .order_by("is_retry", "next_attempt_at")[:limit]
         )
         lease = now + timedelta(seconds=settings.WORKER_LEASE_SECONDS)
         for t in tickets:
@@ -46,10 +47,12 @@ def claim(limit: int) -> list[Ticket]:
             t.attempts += 1
             t.locked_until = lease
             t.save(update_fields=["status", "attempts", "locked_until", "updated_at"])
-        return tickets
+    return tickets
+
 
 def _mine(ticket: Ticket):
     return Ticket.objects.filter(pk=ticket.pk, status=S.DRAFTING, attempts=ticket.attempts)
+
 
 def finish_ok(ticket: Ticket, text: str, sources: list[int]) -> bool:
     return _mine(ticket).update(
@@ -64,7 +67,8 @@ def finish_failed(ticket: Ticket, error: str) -> bool:
         updated_at=timezone.now(),
     ) == 1
 
-def finish_retry(ticket: Ticket, error: str,  retry_after: float | None = None) -> bool:
+
+def finish_retry(ticket: Ticket, error: str, retry_after: float | None = None) -> bool:
     if ticket.attempts >= settings.WORKER_MAX_ATTEMPTS:
         return finish_failed(ticket, f"gave up after {ticket.attempts} attempts: {error}")
     delay = backoff(ticket.attempts, retry_after)
@@ -72,4 +76,4 @@ def finish_retry(ticket: Ticket, error: str,  retry_after: float | None = None) 
     return _mine(ticket).update(
         status=S.RECEIVED, next_attempt_at=now + timedelta(seconds=delay),
         locked_until=None, last_error=error[:1000], updated_at=now,
-    )
+    ) == 1
