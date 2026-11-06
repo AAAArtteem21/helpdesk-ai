@@ -58,8 +58,8 @@ class Worker:
         self.poll = poll or settings.WORKER_POLL_SECONDS
         self.stop = None
 
-    async def run(self) -> None:
-        self.stop = asyncio.Event()
+    async def run(self, stop=None) -> None:
+        self.stop = stop or asyncio.Event()
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, self.stop.set)
